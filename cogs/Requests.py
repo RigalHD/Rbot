@@ -1,11 +1,11 @@
 from disnake.ext import commands
+from utils.database import DataBase as db
 import disnake
 
 
 class RequestsSendButton(disnake.ui.View):
-    def __init__(self, bot):
+    def __init__(self):
         super().__init__(timeout=None)
-        self.bot = bot
 
     @disnake.ui.button(
         label="Отправить заявку",
@@ -14,13 +14,12 @@ class RequestsSendButton(disnake.ui.View):
         custom_id="requests_send_button"
     )
     async def requests_send_button(self, button: disnake.ui.Button, inter: disnake.CommandInteraction):
-        await inter.response.send_modal(RequestsModal(self.bot))
+        await inter.response.send_modal(RequestsModal())
 
 
 class RequestsModal(disnake.ui.Modal):
-    def __init__(self, bot):
-        self.bot = bot
-        self.pool = bot.pool
+    def __init__(self):
+        self.db = db()
         self.components = [
             disnake.ui.TextInput(
                 label="Ваше имя",
@@ -52,8 +51,9 @@ class RequestsModal(disnake.ui.Modal):
         user_info = list(inter.text_values.values())
         user_info[1] = int(user_info[1])
         
-        conn = await self.pool.acquire()
-        await conn.execute(
+        connection = await self.db.connect()
+
+        await connection.execute(
             """
             CREATE TABLE IF NOT EXISTS discord_guild_requests(
             id SERIAL PRIMARY KEY,
@@ -62,13 +62,14 @@ class RequestsModal(disnake.ui.Modal):
             about TEXT NOT NULL
             )"""
             )
-        await conn.execute(
+        
+        await connection.execute(
             """
             INSERT INTO discord_guild_requests(name, age, about) 
             VALUES($1, $2, $3)
             """, *user_info)
         
-        await self.pool.release(conn)
+        await connection.close()
         
         await inter.response.send_message("Успешно!", ephemeral=True)
 
@@ -80,7 +81,7 @@ class Requests(commands.Cog):
     @commands.slash_command()
     @commands.is_owner()
     async def request_to_guild(self, inter: disnake.CommandInteraction):
-        await inter.response.send_message("Отправь заявку!", view=RequestsSendButton(self.bot))
+        await inter.response.send_message("Отправь заявку!", view=RequestsSendButton())
                 
 
 
