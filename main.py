@@ -21,7 +21,7 @@ def main():
             bot.load_extension(f"cogs.{file[:-3]}")
 
     bot.run(os.getenv("RBOT_TOKEN"))
-
+    
 
 if __name__ == "__main__":
     main()

@@ -50,28 +50,36 @@ class RequestsModal(disnake.ui.Modal):
     async def callback(self, inter: disnake.ModalInteraction):
         user_info = list(inter.text_values.values())
         user_info[1] = int(user_info[1])
-        
+
         connection = await self.db.connect()
 
-        await connection.execute(
-            """
-            CREATE TABLE IF NOT EXISTS discord_guild_requests(
-            id SERIAL PRIMARY KEY,
-            name TEXT NOT NULL,
-            age INTEGER NOT NULL,
-            about TEXT NOT NULL
-            )"""
-            )
-        
-        await connection.execute(
-            """
-            INSERT INTO discord_guild_requests(name, age, about) 
-            VALUES($1, $2, $3)
-            """, *user_info)
-        
-        await connection.close()
-        
-        await inter.response.send_message("Успешно!", ephemeral=True)
+        try:
+            await connection.execute(
+                """
+                CREATE TABLE IF NOT EXISTS discord_guild_requests(
+                id SERIAL PRIMARY KEY,
+                name TEXT NOT NULL,
+                age INTEGER NOT NULL,
+                about TEXT NOT NULL
+                )"""
+                )
+            
+            await connection.execute(
+                """
+                INSERT INTO discord_guild_requests(name, age, about) 
+                VALUES($1, $2, $3)
+                """, *user_info)
+            a = await self.db.create_table("t", {"colname": "TEXT"})
+            if a is None:
+                print("!")
+            await inter.response.send_message("Успешно!", ephemeral=True)
+
+        except Exception as e:
+            raise e
+
+        finally:
+            await connection.close()
+            
 
 
 class Requests(commands.Cog):
@@ -82,7 +90,6 @@ class Requests(commands.Cog):
     @commands.is_owner()
     async def request_to_guild(self, inter: disnake.CommandInteraction):
         await inter.response.send_message("Отправь заявку!", view=RequestsSendButton())
-                
 
 
 def setup(bot):
