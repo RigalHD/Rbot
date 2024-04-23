@@ -36,7 +36,7 @@ class RequestsModal(disnake.ui.Modal):
     async def callback(self, inter: disnake.ModalInteraction):
         user_info = list(inter.text_values.values())
         user_info[1] = int(user_info[1])
-        print(user_info)
+        
         conn = await self.pool.acquire()
         await conn.execute(
             """
@@ -52,10 +52,10 @@ class RequestsModal(disnake.ui.Modal):
             INSERT INTO discord_guild_requests(name, age, about) 
             VALUES($1, $2, $3)
             """, *user_info)
-        information = [tuple(t) for t in tuple(await conn.fetch("SELECT * FROM discord_guild_requests"))]
-        print(information)
+        
         await self.pool.release(conn)
-        print("OK")
+        
+        await inter.response.send_message("Успешно!", ephemeral=True)
 
 
 class Requests(commands.Cog):

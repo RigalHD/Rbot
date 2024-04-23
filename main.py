@@ -6,7 +6,8 @@ import asyncpg
 
 load_dotenv(".env")
 
-class MyBot(commands.Bot):
+
+class RBot(commands.Bot):
     def __init__(self, command_prefix, **options):
         super().__init__(command_prefix, **options)
         self.pool = None
@@ -26,7 +27,7 @@ class MyBot(commands.Bot):
         await super().close()
 
 
-bot = MyBot(
+bot = RBot(
     command_prefix="!!",
     help_command=None,  
     activity=disnake.Game("NewSide"),
