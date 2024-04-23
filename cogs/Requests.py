@@ -69,9 +69,6 @@ class RequestsModal(disnake.ui.Modal):
                 INSERT INTO discord_guild_requests(name, age, about) 
                 VALUES($1, $2, $3)
                 """, *user_info)
-            a = await self.db.create_table("t", {"colname": "TEXT"})
-            if a is None:
-                print("!")
             await inter.response.send_message("Успешно!", ephemeral=True)
 
         except Exception as e:
