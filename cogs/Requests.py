@@ -1,5 +1,6 @@
 from disnake.ext import commands
 from utils.database import DataBase as db
+import asyncpg
 import disnake
 
 
@@ -54,24 +55,22 @@ class RequestsModal(disnake.ui.Modal):
         connection = await self.db.connect()
 
         try:
-            table_name = "discord_guild_requests"
-            columns = {
-                "name": "TEXT NOT NULL",
-                "age": "INTEGER NOT NULL",
-                "about": "TEXT NOT NULL",
-            }
-            tested = 1
-            if await self.db.create_table(table_name, columns) or tested == 1:
-                await connection.execute(
-                    """
-                    INSERT INTO discord_guild_requests(name, age, about) 
-                    VALUES($1, $2, $3)
-                    """, *user_info)
-                
-                await inter.response.send_message("Успешно!", ephemeral=True)
-            else:
-                await inter.response.send_message("Ошибка!", ephemeral=True)
-                return
+            await connection.execute(
+                """CREATE TABLE IF NOT EXISTS discord_guild_requests(
+                id INTEGER PRIMARY KEY,
+                name TEXT NOT NULL,
+                age INTEGER NOT NULL,
+                about TEXT NOT NULL
+                )""")
+
+            await connection.execute(
+                """
+                INSERT INTO discord_guild_requests(name, age, about) 
+                VALUES($1, $2, $3)
+                """, *user_info)
+            
+            await inter.response.send_message("Успешно!", ephemeral=True)
+            
         except Exception as e:
             raise e
 
