@@ -54,23 +54,24 @@ class RequestsModal(disnake.ui.Modal):
         connection = await self.db.connect()
 
         try:
-            await connection.execute(
-                """
-                CREATE TABLE IF NOT EXISTS discord_guild_requests(
-                id SERIAL PRIMARY KEY,
-                name TEXT NOT NULL,
-                age INTEGER NOT NULL,
-                about TEXT NOT NULL
-                )"""
-                )
-            
-            await connection.execute(
-                """
-                INSERT INTO discord_guild_requests(name, age, about) 
-                VALUES($1, $2, $3)
-                """, *user_info)
-            await inter.response.send_message("Успешно!", ephemeral=True)
-
+            table_name = "discord_guild_requests"
+            columns = {
+                "name": "TEXT NOT NULL",
+                "age": "INTEGER NOT NULL",
+                "about": "TEXT NOT NULL",
+            }
+            tested = 1
+            if await self.db.create_table(table_name, columns) or tested == 1:
+                await connection.execute(
+                    """
+                    INSERT INTO discord_guild_requests(name, age, about) 
+                    VALUES($1, $2, $3)
+                    """, *user_info)
+                
+                await inter.response.send_message("Успешно!", ephemeral=True)
+            else:
+                await inter.response.send_message("Ошибка!", ephemeral=True)
+                return
         except Exception as e:
             raise e
 

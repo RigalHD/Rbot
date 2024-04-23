@@ -21,19 +21,23 @@ class DataBase:
     async def create_table(
             self,
             table_name: str,
-            columns_and_types: Dict[str, Any] = ""
-            ):     
+            columns_and_types: Dict[str, str]
+            ) -> bool:     
         try:
             self.connection = await self.connect()
             table_name = re.sub(r'[^a-zA-Z0-9_]', '', table_name).replace(" ", "_")
             # for t in table_name:
             #     if not re.match(r'^[a-zA-Z0-9_]+\s+[a-zA-Z0-9_]+$', t):
             #         return
-            await self.connection.execute(
-                f'''
-                CREATE TABLE IF NOT EXISTS {table_name}(
-                id SERIAL PRIMARY KEY
-                )''')
+            try:
+                await self.connection.execute(
+                    f'''
+                    CREATE TABLE {table_name}(
+                    id SERIAL PRIMARY KEY
+                    )''')
+            except Exception as e:
+                print(e)
+                return False
             for column_name, column_type in columns_and_types.items():
                 column = re.sub(
                     r'[^a-zA-Z0-9_]', '', column_name
@@ -46,7 +50,8 @@ class DataBase:
                 ADD COLUMN IF NOT EXISTS {column}
                 """
                 await self.connection.execute(query)
-                await self.connection.close()
+            await self.connection.close()
+            return True
         except Exception as e:
             await self.connection.close()
             raise e
