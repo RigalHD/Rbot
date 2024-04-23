@@ -2,6 +2,21 @@ from disnake.ext import commands
 import disnake
 
 
+class RequestsSendButton(disnake.ui.View):
+    def __init__(self, bot):
+        super().__init__(timeout=None)
+        self.bot = bot
+
+    @disnake.ui.button(
+        label="Отправить заявку",
+        emoji="📋",
+        style=disnake.ButtonStyle.green,
+        custom_id="requests_send_button"
+    )
+    async def requests_send_button(self, button: disnake.ui.Button, inter: disnake.CommandInteraction):
+        await inter.response.send_modal(RequestsModal(self.bot))
+
+
 class RequestsModal(disnake.ui.Modal):
     def __init__(self, bot):
         self.bot = bot
@@ -65,7 +80,7 @@ class Requests(commands.Cog):
     @commands.slash_command()
     @commands.is_owner()
     async def request_to_guild(self, inter: disnake.CommandInteraction):
-        await inter.response.send_modal(RequestsModal(self.bot))
+        await inter.response.send_message("Отправь заявку!", view=RequestsSendButton(self.bot))
                 
 
 
