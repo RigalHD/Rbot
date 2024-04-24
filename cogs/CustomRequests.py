@@ -35,7 +35,7 @@ class CustomFormsColumnsButtons(disnake.ui.View):
         self.stop()
 
 
-class CustomFormsRequestOrFormButtons(disnake.ui.View):
+class CustomRequestOrFormButtons(disnake.ui.View):
     def __init__(self, columns_names: tuple):
         super().__init__(timeout=None)
         self.columns_names = columns_names
@@ -43,11 +43,42 @@ class CustomFormsRequestOrFormButtons(disnake.ui.View):
     @disnake.ui.button(emoji='📄', label="Форма", style=disnake.ButtonStyle.green)
     async def form_button(self, button: disnake.ui.Button, inter: disnake.CommandInteraction):
         await inter.response.send_modal(CustomFormPropertiesModal(self.columns_names))
-        self.stop()
+        # self.stop()
     
     @disnake.ui.button(emoji='📨', label="Заявка", style=disnake.ButtonStyle.green)
     async def request_button(self, button: disnake.ui.Button, inter: disnake.CommandInteraction):
         await inter.response.send_message("Временно недоступно")
+        # self.stop()
+
+
+class CustomFormsOrRequestsConfirmButtons(disnake.ui.View):
+    def __init__(self, is_form: bool, id: int):
+        super().__init__(timeout=None)
+        self.is_form: bool = is_form
+        self.id: int = id
+        self.db = db()
+
+    async def change_request_status(self, status: bool):
+        connection: Connection = await self.db.connect()
+        await connection.execute(
+            f"""
+            UPDATE {"forms" if self.is_form else "requests"}
+            SET confirmed = $1
+            WHERE id = {self.id}
+            """, status
+        )
+        await connection.close()
+
+    @disnake.ui.button(emoji='✔️', label="ОК", style=disnake.ButtonStyle.green)
+    async def confirm_button(self, button: disnake.ui.Button, inter: disnake.CommandInteraction):
+        await self.change_request_status(True)
+        await inter.response.send_message("Заявка подтверждена!")
+        self.stop()
+    
+    @disnake.ui.button(emoji='✖️', label="NOT OK", style=disnake.ButtonStyle.red)
+    async def refuse_button(self, button: disnake.ui.Button, inter: disnake.CommandInteraction):
+        await self.change_request_status(False)
+        await inter.response.send_message("Заявка отклонена!")
         self.stop()
     
 
@@ -73,7 +104,7 @@ class CustomFormColumnsModal(disnake.ui.Modal):
         columns_names = inter.text_values.values()
         await inter.response.send_message(
             "Форма или заявка?",
-            view=CustomFormsRequestOrFormButtons(columns_names)
+            view=CustomRequestOrFormButtons(columns_names)
             )
 
 
@@ -81,6 +112,7 @@ class CustomFormPropertiesModal(disnake.ui.Modal):
     def __init__(self, columns_names: tuple):
         self.columns_names: tuple = columns_names
         self.db = db()
+        self.id: int
         self.components = [
             disnake.ui.TextInput(
                 label="Введите айди канала",
@@ -118,7 +150,7 @@ class CustomFormPropertiesModal(disnake.ui.Modal):
             int(inter.text_values["send_button_channel_id"]),
             self.columns_names,
             json.dumps({"creation_datetime": str(datetime.datetime.now())}),
-            datetime.datetime.now().date()
+            datetime.datetime.now().date(),
             ]
 
         await connection.execute(
@@ -129,19 +161,35 @@ class CustomFormPropertiesModal(disnake.ui.Modal):
                 send_button_channel BIGINT,
                 columns_names TEXT[] NOT NULL,
                 all_forms JSONB,
-                send_date DATE NOT NULL
+                send_date DATE NOT NULL,
+                confirmed BOOLEAN
                 )""")
         
-        await connection.execute(
+        self.id = await connection.fetchval(
             """
             INSERT INTO forms(
                 guild_id, user_id, send_button_channel,
                 columns_names, all_forms, send_date
             ) VALUES($1, $2, $3, $4, $5, $6)
+            RETURNING id
             """, *values
             )
+        values.append(self.id)
+  
         await connection.close()
+
+        owner = inter.bot.get_user(581348510830690344)
+
         await inter.response.send_message("ok!")
+
+        embed = disnake.Embed()
+
+        embed.description = f"{inter.user.mention} создал заявку"
+        for info in values:
+            embed.description += "\n" + str(info)
+        await owner.send(embed=embed, view=CustomFormsOrRequestsConfirmButtons(is_form=True, id=self.id))
+        
+
 
 class CustomForms(commands.Cog):
     def __init__(self, bot):
@@ -149,7 +197,7 @@ class CustomForms(commands.Cog):
     
     @commands.slash_command()
     @commands.is_owner()
-    async def test_command(self, inter: disnake.CommandInteraction):
+    async def create_form(self, inter: disnake.ApplicationCommandInteraction):
         await inter.response.send_message(
             "Отправь ...?",
             view=CustomFormsColumnsButtons(),
